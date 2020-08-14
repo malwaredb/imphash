@@ -13,16 +13,18 @@ func main() {
 		os.Exit(1)
 	}
 
-	fileContents, err := ioutil.ReadFile(os.Args[1])
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to read %s: %s.\n", os.Args[1], err)
-		os.Exit(1)
-	}
+	for _, arg := range os.Args[1:] {
+		fileContents, err := ioutil.ReadFile(arg)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to read %s: %s.\n", arg, err)
+			continue
+		}
 
-	impHashes, err := imphash.ImpHashFromBytes(fileContents)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error trying to get import hash: %s.\n", err)
-		return
+		impHashes, err := imphash.ImpHashFromBytes(fileContents)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to parse %s: %s.\n", arg, err)
+			continue
+		}
+		fmt.Printf("%s: %s\n", os.Args[1], impHashes.ImpHash)
 	}
-	fmt.Printf("%s: %s\n", os.Args[1], impHashes.ImpHash)
 }

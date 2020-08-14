@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/md5"
 	"debug/elf"
+	"debug/macho"
 	"debug/pe"
 	"errors"
 	"fmt"
@@ -24,6 +25,12 @@ func ImpHashFromBytes(fileContents []byte) (*ImpHashResult, error) {
 	}
 	if bytes.HasPrefix(fileContents, []byte{0x7f, 0x45, 0x4c, 0x46}) {
 		return impHashFromELFBytes(fileContents)
+	}
+	if bytes.HasPrefix(fileContents, []byte{0xfe, 0xed, 0xfa, 0xce}) {
+		return impHashFromMachO(fileContents)
+	}
+	if bytes.HasPrefix(fileContents, []byte{0xca, 0xfe, 0xba, 0xbe}) {
+		return impHashFromFatMachO(fileContents)
 	}
 	return nil, errors.New("File type not supported")
 }
@@ -117,14 +124,118 @@ func impHashFromELFBytes(fileContents []byte) (*ImpHashResult, error) {
 	sort.Strings(libNames)
 
 	impString := ""
-	for _, dllName := range libNames {
+	for idx1, dllName := range libNames {
 		sort.Strings(libFunc[dllName])
-		for idx, funcName := range libFunc[dllName] {
-			if idx > 0 {
+		for idx2, funcName := range libFunc[dllName] {
+			if idx1+idx2 > 0 {
 				impString += ","
 			}
 			impString += dllName + "." + funcName
 		}
+	}
+
+	impHashes := &ImpHashResult{}
+	impHashes.ImpHash = fmt.Sprintf("%x", md5.Sum([]byte(impString)))
+	impHashes.ImpFuzzy, _ = ssdeep.FuzzyBytes([]byte(impString))
+	impHashes.ImpString = impString
+	return impHashes, nil
+}
+
+func impHashFromMachO(fileContents []byte) (*ImpHashResult, error) {
+	fileReader := bytes.NewReader(fileContents)
+	m, err := macho.NewFile(fileReader)
+	if err != nil {
+		return nil, err
+	}
+
+	libs, err := m.ImportedLibraries()
+	if err != nil {
+		return nil, err
+	}
+
+	libFunc := make(map[string]int, 0)
+	for _, lib := range libs {
+		libname := lib
+		soIdx := strings.Index(libname, ".dylib")
+		if soIdx > 0 {
+			libname = libname[:soIdx]
+		}
+		libFunc[libname] = 1
+	}
+
+	symbols, err := m.ImportedSymbols()
+	if err != nil {
+		return nil, err
+	}
+	for _, symb := range symbols {
+		libFunc[symb] = 1
+	}
+
+	libNames := make([]string, 0)
+	for lib := range libFunc {
+		libNames = append(libNames, lib)
+	}
+	sort.Strings(libNames)
+
+	impString := ""
+	for idx, dllName := range libNames {
+		if idx > 0 {
+			impString += ","
+		}
+		impString += dllName
+	}
+
+	impHashes := &ImpHashResult{}
+	impHashes.ImpHash = fmt.Sprintf("%x", md5.Sum([]byte(impString)))
+	impHashes.ImpFuzzy, _ = ssdeep.FuzzyBytes([]byte(impString))
+	impHashes.ImpString = impString
+	return impHashes, nil
+}
+
+func impHashFromFatMachO(fileContents []byte) (*ImpHashResult, error) {
+	fileReader := bytes.NewReader(fileContents)
+	m, err := macho.NewFatFile(fileReader)
+	if err != nil {
+		return nil, err
+	}
+
+	libFunc := make(map[string]int, 0) // Using it as a set
+	for _, arch := range m.Arches {
+		libs, err := arch.ImportedLibraries()
+		if err != nil {
+			return nil, err
+		}
+
+		for _, lib := range libs {
+			libname := lib
+			soIdx := strings.Index(libname, ".dylib")
+			if soIdx > 0 {
+				libname = libname[:soIdx]
+			}
+			libFunc[libname] = 1
+		}
+
+		symbols, err := arch.ImportedSymbols()
+		if err != nil {
+			return nil, err
+		}
+		for _, symb := range symbols {
+			libFunc[symb] = 1
+		}
+	}
+
+	libNames := make([]string, 0)
+	for lib := range libFunc {
+		libNames = append(libNames, lib)
+	}
+
+	sort.Strings(libNames)
+	impString := ""
+	for idx, dllName := range libNames {
+		if idx > 0 {
+			impString += ","
+		}
+		impString += dllName
 	}
 
 	impHashes := &ImpHashResult{}
