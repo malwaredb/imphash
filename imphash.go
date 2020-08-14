@@ -26,7 +26,10 @@ func ImpHashFromBytes(fileContents []byte) (*ImpHashResult, error) {
 	if bytes.HasPrefix(fileContents, []byte{0x7f, 0x45, 0x4c, 0x46}) {
 		return impHashFromELFBytes(fileContents)
 	}
-	if bytes.HasPrefix(fileContents, []byte{0xfe, 0xed, 0xfa, 0xce}) {
+	if bytes.HasPrefix(fileContents, []byte{0xfe, 0xed, 0xfa, 0xce}) || // 32-bit
+		bytes.HasPrefix(fileContents, []byte{0xce, 0xfa, 0xed, 0xfe}) || // 32-bit, reverse ordering
+		bytes.HasPrefix(fileContents, []byte{0xfe, 0xed, 0xfa, 0xcf}) || // 64-bit
+		bytes.HasPrefix(fileContents, []byte{0xcf, 0xfa, 0xed, 0xfe}){ // 64-bit, reverse ordering
 		return impHashFromMachO(fileContents)
 	}
 	if bytes.HasPrefix(fileContents, []byte{0xca, 0xfe, 0xba, 0xbe}) {

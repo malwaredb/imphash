@@ -25,6 +25,6 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Failed to parse %s: %s.\n", arg, err)
 			continue
 		}
-		fmt.Printf("%s: %s\n", os.Args[1], impHashes.ImpHash)
+		fmt.Printf("%s: %s\n", arg, impHashes.ImpHash)
 	}
 }
