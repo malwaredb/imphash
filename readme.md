@@ -1,4 +1,4 @@
-###### ImpHash for Go
+### ImpHash for Go
 
 * The imports are sorted by the library and function name, so re-ordering the imports doesn't change the import hash. HOwever, that means the imports aren't the same as the `pefile` Python module, or other sources, such as VirusTotal.
 * Fuzzy import hashes are achieved by using SSDeep to generate a fuzzy hash of the import information, after sorting.
