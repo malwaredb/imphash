@@ -8,9 +8,9 @@ import (
 	"debug/pe"
 	"errors"
 	"fmt"
+	"github.com/glaslos/ssdeep"
 	"sort"
 	"strings"
-	"github.com/glaslos/ssdeep"
 )
 
 type ImpHashResult struct {
@@ -90,7 +90,15 @@ func impHashFromPEBytes(fileContents []byte) (*ImpHashResult, error) {
 		}
 	}
 
+	impHashes.ImpString = impString
 	impHashes.ImpHash = fmt.Sprintf("%x", md5.Sum([]byte(impString)))
+	for {
+		if len(impString) < 4096 {
+			impString += " "
+		} else {
+			break
+		}
+	}
 	impHashes.ImpFuzzy, _ = ssdeep.FuzzyBytes([]byte(impString))
 	impHashes.ImpString = impString
 	return impHashes, nil
@@ -139,8 +147,16 @@ func impHashFromELFBytes(fileContents []byte) (*ImpHashResult, error) {
 
 	impHashes := &ImpHashResult{}
 	impHashes.ImpHash = fmt.Sprintf("%x", md5.Sum([]byte(impString)))
-	impHashes.ImpFuzzy, _ = ssdeep.FuzzyBytes([]byte(impString))
 	impHashes.ImpString = impString
+
+	for {
+		if len(impString) < 4096 {
+			impString += " "
+		} else {
+			break
+		}
+	}
+	impHashes.ImpFuzzy, _ = ssdeep.FuzzyBytes([]byte(impString))
 	return impHashes, nil
 }
 
@@ -189,9 +205,16 @@ func impHashFromMachO(fileContents []byte) (*ImpHashResult, error) {
 	}
 
 	impHashes := &ImpHashResult{}
-	impHashes.ImpHash = fmt.Sprintf("%x", md5.Sum([]byte(impString)))
-	impHashes.ImpFuzzy, _ = ssdeep.FuzzyBytes([]byte(impString))
 	impHashes.ImpString = impString
+	impHashes.ImpHash = fmt.Sprintf("%x", md5.Sum([]byte(impString)))
+	for {
+		if len(impString) < 4096 {
+			impString += " "
+		} else {
+			break
+		}
+	}
+	impHashes.ImpFuzzy, _ = ssdeep.FuzzyBytes([]byte(impString))
 	return impHashes, nil
 }
 
@@ -242,8 +265,15 @@ func impHashFromFatMachO(fileContents []byte) (*ImpHashResult, error) {
 	}
 
 	impHashes := &ImpHashResult{}
-	impHashes.ImpHash = fmt.Sprintf("%x", md5.Sum([]byte(impString)))
-	impHashes.ImpFuzzy, _ = ssdeep.FuzzyBytes([]byte(impString))
 	impHashes.ImpString = impString
+	impHashes.ImpHash = fmt.Sprintf("%x", md5.Sum([]byte(impString)))
+	for {
+		if len(impString) < 4096 {
+			impString += " "
+		} else {
+			break
+		}
+	}
+	impHashes.ImpFuzzy, _ = ssdeep.FuzzyBytes([]byte(impString))
 	return impHashes, nil
 }
